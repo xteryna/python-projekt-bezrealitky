@@ -59,36 +59,28 @@ def scrape_property_data(url):
         except ValueError:
             pass
     
-    # Nalezení informací o bodech zájmu v okolí
-    neighborhood_div = soup.find('div', class_='Neighborhood_neighborhoodTable__Ipy5I neighborhoodTable')
-    if neighborhood_div:
-        poi_items = neighborhood_div.find_all('div', class_='Poi_poiItem__7JgIz poiItem')
-        poi_data = {}
-        for item in poi_items:
-            poi_type = item.find('span', class_='Poi_poiItemContentType__XukbX poiItemContentType')
-            poi_name = item.find('strong', class_='poiItemContentName')
-            poi_distance = item.find('div', class_='Poi_poiItemTimes__hse64 poiItemTimes')
-            if poi_type and poi_name and poi_distance:
-                distance_text = poi_distance.text.strip()
-                distance_match = re.match(r'🚶 (\d+) m \((\d+) min\)', distance_text)
-                if distance_match:
-                    meters = int(distance_match.group(1))
-                    minutes = int(distance_match.group(2))
-                    poi_type_text = poi_type.find('span').text.strip()  # Získat text z vnořeného elementu span
-                    poi_data[poi_type_text] = {
-                        'Vzdálenost': {'metry': meters, 'minuty': minutes}
-                    }
-        property_data['Body zájmu v okolí'] = poi_data
-    
-    # Extrahovat údaje o městě a městské části
+    # Extrahovat údaje o kraji, okresu, městě a městské části
     breadcrumb_div = soup.find('div', class_='Container_container--narrow__0pGYY container')
     if breadcrumb_div:
         breadcrumb_items = breadcrumb_div.find_all('li', class_='breadcrumb-item')
-        if len(breadcrumb_items) >= 6:
-            city = breadcrumb_items[4].text.strip()
-            district = breadcrumb_items[5].text.strip()
-            property_data['Kraj'] = city
-            property_data['Okres'] = district
+        if len(breadcrumb_items) == 7:
+            # Praha
+            property_data['Kraj'] = breadcrumb_items[4].text.strip()
+            property_data['Okres'] = breadcrumb_items[4].text.strip()
+            property_data['Město'] = breadcrumb_items[4].text.strip()
+            property_data['Městská část'] = breadcrumb_items[5].text.strip()
+        elif len(breadcrumb_items) == 9:
+            # Velká města
+            property_data['Kraj'] = breadcrumb_items[4].text.strip()
+            property_data['Okres'] = breadcrumb_items[5].text.strip()
+            property_data['Město'] = breadcrumb_items[6].text.strip()
+            property_data['Městská část'] = breadcrumb_items[7].text.strip()
+        elif len(breadcrumb_items) == 8:
+            # Menší města
+            property_data['Kraj'] = breadcrumb_items[4].text.strip()
+            property_data['Okres'] = breadcrumb_items[5].text.strip()
+            property_data['Město'] = breadcrumb_items[6].text.strip()
+            property_data['Městská část'] = breadcrumb_items[6].text.strip()
     
     # Přidat URL stránky do výsledných dat
     property_data['URL'] = url
@@ -107,22 +99,15 @@ with open('apartments.json', 'r', encoding='utf-8') as file:
     urls = json.load(file)
 
 # Procházení seznamu URL adres
-property_dict = {}
-for i, url in enumerate(urls):
+property_list = []
+for url in urls:
     print(f"Zpracovává se: {url}")
     data = scrape_property_data(url)
     if data:
-        property_dict[i] = data
+        property_list.append(data)
 
 # Uložit data do jednoho JSON souboru
 with open('properties.json', 'w', encoding='utf-8') as json_file:
-    json.dump(property_dict, json_file, ensure_ascii=False, indent=4)
+    json.dump(property_list, json_file, ensure_ascii=False, indent=4)
 
 print("Data uložena do properties.json")
-
-
-
-
-
-
-
