@@ -26,10 +26,7 @@ df["Dispozice_kategorie"] = df["Dispozice"].apply(map_dispozice)
 
 if "zobrazit_uvodni_obrazovku" not in st.session_state:
     st.session_state["zobrazit_uvodni_obrazovku"] = True
-if "vybrany_kraj" not in st.session_state:
-    st.session_state.vybrany_kraj = ""
-if "vybrany_okres" not in st.session_state:
-    st.session_state.vybrany_okres = ""
+
 
 def show_content():
     st.session_state["zobrazit_uvodni_obrazovku"] = False
@@ -42,32 +39,32 @@ if st.session_state["zobrazit_uvodni_obrazovku"]:
         st.session_state["zobrazit_uvodni_obrazovku"] = False
         st.experimental_rerun()  # Okamžitě obnoví skript pro zobrazení dalšího obsahu
 else:
+    # Inicializace session state pro vybraný kraj a okres
+    if "vybrany_kraj" not in st.session_state:
+        st.session_state.vybrany_kraj = df["Kraj"].iloc[0]
+
+    if "vybrany_okres" not in st.session_state:
+        st.session_state.vybrany_okres = df[df["Kraj"] == st.session_state.vybrany_kraj]["Okres"].iloc[0]
+
+    # Seznam krajů pro selectbox
     kraje = df["Kraj"].unique().tolist()
-    vybrany_kraj = st.sidebar.selectbox("Kraj", kraje, key="vybrany_kraj")
-    
-    if vybrany_kraj != st.session_state.vybrany_kraj:
-        st.session_state.vybrany_kraj = vybrany_kraj
-        st.session_state.vybrany_okres = ""  # Reset vybraného okresu při změně kraje
-        st.experimental_rerun()  # Okamžitě obnoví skript pro aktualizaci okresu
 
-    df_kraj = df[df["Kraj"] == st.session_state.vybrany_kraj]
-    okresy = df_kraj["Okres"].unique().tolist()
-    
-    if st.session_state.vybrany_okres in okresy:
-        vybrany_okres_index = okresy.index(st.session_state.vybrany_okres)
-    else:
-        vybrany_okres_index = 0
-        if okresy:  # Check if okresy list is not empty
-            st.session_state.vybrany_okres = okresy[0]
+    # Funkce pro nastavení vybraného kraje
+    def set_kraj():
+        st.session_state.vybrany_kraj = st.session_state.kraj
+        st.session_state.vybrany_okres = df[df["Kraj"] == st.session_state.vybrany_kraj]["Okres"].iloc[0]
 
-    vybrany_okres = st.sidebar.selectbox("Okres", okresy, key="vybrany_okres")
+    # Selectbox pro výběr kraje
+    st.sidebar.selectbox("Vyber kraj:", kraje, key='kraj', index=kraje.index(st.session_state.vybrany_kraj), on_change=set_kraj)
 
-    st.write(f"vybraný okres je {vybrany_okres}")
-    # Zbytek kódu
+    # Filtrace okresů podle vybraného kraje
+    okresy = df[df["Kraj"] == st.session_state.vybrany_kraj]["Okres"].unique().tolist()
 
+    # Selectbox pro výběr okresu
+    st.session_state.vybrany_okres = st.sidebar.selectbox("Vyber okres:", okresy, key='okres', index=okresy.index(st.session_state.vybrany_okres))
+    vybrany_kraj = st.session_state.vybrany_kraj
+    vybrany_okres = st.session_state.vybrany_okres
 
-
-    # Zbytek kódu
 
     # funkce pro podmíněné formátování
     def zvyrazni_radek(radek, kategorie, vybrana_hodnota):

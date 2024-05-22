@@ -26,10 +26,7 @@ df["Dispozice_kategorie"] = df["Dispozice"].apply(map_dispozice)
 
 if "zobrazit_uvodni_obrazovku" not in st.session_state:
     st.session_state["zobrazit_uvodni_obrazovku"] = True
-if "vybrany_kraj" not in st.session_state:
-    st.session_state.vybrany_kraj = ""
-if "vybrany_okres" not in st.session_state:
-    st.session_state.vybrany_okres = ""
+
 
 def show_content():
     st.session_state["zobrazit_uvodni_obrazovku"] = False
@@ -42,32 +39,32 @@ if st.session_state["zobrazit_uvodni_obrazovku"]:
         st.session_state["zobrazit_uvodni_obrazovku"] = False
         st.experimental_rerun()  # Okamžitě obnoví skript pro zobrazení dalšího obsahu
 else:
+    # Inicializace session state pro vybraný kraj a okres
+    if "vybrany_kraj" not in st.session_state:
+        st.session_state.vybrany_kraj = df["Kraj"].iloc[0]
+
+    if "vybrany_okres" not in st.session_state:
+        st.session_state.vybrany_okres = df[df["Kraj"] == st.session_state.vybrany_kraj]["Okres"].iloc[0]
+
+    # Seznam krajů pro selectbox
     kraje = df["Kraj"].unique().tolist()
-    vybrany_kraj = st.sidebar.selectbox("Vyber kraj, ke kterému se bude vztahovat analýza", kraje, key="vybrany_kraj")
-    
-    if vybrany_kraj != st.session_state.vybrany_kraj:
-        st.session_state.vybrany_kraj = vybrany_kraj
-        st.session_state.vybrany_okres = ""  # Reset vybraného okresu při změně kraje
-        st.experimental_rerun()  # Okamžitě obnoví skript pro aktualizaci okresu
 
-    df_kraj = df[df["Kraj"] == st.session_state.vybrany_kraj]
-    okresy = df_kraj["Okres"].unique().tolist()
-    
-    if st.session_state.vybrany_okres in okresy:
-        vybrany_okres_index = okresy.index(st.session_state.vybrany_okres)
-    else:
-        vybrany_okres_index = 0
-        if okresy:  # Check if okresy list is not empty
-            st.session_state.vybrany_okres = okresy[0]
+    # Funkce pro nastavení vybraného kraje
+    def set_kraj():
+        st.session_state.vybrany_kraj = st.session_state.kraj
+        st.session_state.vybrany_okres = df[df["Kraj"] == st.session_state.vybrany_kraj]["Okres"].iloc[0]
 
-    vybrany_okres = st.sidebar.selectbox("Vyber okres, ke kterému se bude vztahovat analýza", okresy, key="vybrany_okres")
+    # Selectbox pro výběr kraje
+    st.sidebar.selectbox("Vyber kraj:", kraje, key='kraj', index=kraje.index(st.session_state.vybrany_kraj), on_change=set_kraj)
 
-    st.write(f"vybraný okres je {vybrany_okres}")
-    # Zbytek kódu
+    # Filtrace okresů podle vybraného kraje
+    okresy = df[df["Kraj"] == st.session_state.vybrany_kraj]["Okres"].unique().tolist()
 
+    # Selectbox pro výběr okresu
+    st.session_state.vybrany_okres = st.sidebar.selectbox("Vyber okres:", okresy, key='okres', index=okresy.index(st.session_state.vybrany_okres))
+    vybrany_kraj = st.session_state.vybrany_kraj
+    vybrany_okres = st.session_state.vybrany_okres
 
-
-    # Zbytek kódu
 
     # funkce pro podmíněné formátování
     def zvyrazni_radek(radek, kategorie, vybrana_hodnota):
@@ -99,20 +96,10 @@ else:
             "Cena": "{:.0f}",
             "Cena za m2": "{:.0f}"
         })
-        
+     
         #výpis df - cena za m2
-        st.write("Cena bytů za m2 pro jednotlivé kraje")
+        st.write("Průměrné ceny bytů a užitné plochy pro jednotlivé kraje")
         st.dataframe(styled_df, height=(num_rows+1)*35+3, hide_index=True)
-
-
-
-
-        # Zobrazení DataFrame s upraveným formátováním
-        st.dataframe(df, hide_index=True)
-
-
-
-
 
         #barchart plotly - cena za m2
         sorted_df = df_groupby_kraje_cena_za_m2.sort_values(by="Cena za m2")
@@ -121,7 +108,7 @@ else:
         fig = px.bar(sorted_df, y="Kraj", x="Cena za m2", color="barva",
                     color_discrete_map={"lightblue": "lightblue", "blue": "blue"},
                     category_orders={"Kraj": sorted_df["Kraj"].tolist()},
-                    title="Cena za m2 podle kraje")
+                    title="Cena bytů za m2 podle kraje")
         fig.update_layout(showlegend=False)
         st.plotly_chart(fig)
 
@@ -131,7 +118,7 @@ else:
         with col1:
             df_groupby_dispozice_cena_m2 = df.groupby("Dispozice_kategorie")["Cena za m2"].mean().reset_index().sort_values(by="Cena za m2")
             #výpis df - dispozice
-            st.write("Dispozice bytů - cena za m2")
+            st.write("Dispozice bytů - cena za m2 (celá ČR)")
             num_rows = df_groupby_dispozice_cena_m2.shape[0]
             styled_df = df_groupby_dispozice_cena_m2.style.format({
                 "Užitná plocha": "{:.0f}",
@@ -146,7 +133,7 @@ else:
             
             fig = px.bar(sorted_df, y="Dispozice_kategorie", x="Cena za m2",
                         category_orders={"Dispozice_kategorie": sorted_df["Dispozice_kategorie"].tolist()},
-                        title="Cena za m2 dle dispozice bytu")
+                        title="Cena za m2 dle dispozice bytu (celá ČR)")
             fig.update_layout(showlegend=False, height=300, width=300, bargap=0.1)
 
             st.plotly_chart(fig)
@@ -155,18 +142,17 @@ else:
 
         with col1:
             #dispozice - četnost
-            st.write("Dispozice bytů - četnost")
             df_groupby_dispozice = df.groupby("Dispozice_kategorie")["Dispozice_kategorie"].count().reset_index(name="četnost")
             # Výpočet procentuálního zastoupení výskytů
             df_groupby_dispozice["procenta"] = (df_groupby_dispozice["četnost"]/df_groupby_dispozice["četnost"].sum()).round(2)
             df_groupby_dispozice["procenta"] = df_groupby_dispozice["procenta"].map(lambda x: f"{x:.0%}")
             # Vytvoření pie chartu - dispozice četnost
-            fig = px.pie(df_groupby_dispozice, values="četnost", names="Dispozice_kategorie", title="Dispozice bytů - zastoupení")
+            fig = px.pie(df_groupby_dispozice, values="četnost", names="Dispozice_kategorie", title="Dispozice bytů - zastoupení (celá ČR)")
             fig.update_traces(textinfo="percent+label")  # Přidání procentuálních hodnot k jednotlivým segmentům
             st.plotly_chart(fig, use_container_width=True)
             
         with col2:
-            st.write("Nejčetnější dispozice bytů dle krajů")
+            st.write("Nejčetnější dispozice bytů dle krajů (celá ČR)")
             df_groupby_kraje_dispozice = df.groupby(["Kraj", "Dispozice_kategorie"]).size().reset_index(name="Počet")
             sorted_df_groupby_kraje_dispozice = df_groupby_kraje_dispozice.sort_values(by=["Kraj", "Počet"], ascending=[True, False])
             result_df = sorted_df_groupby_kraje_dispozice.groupby("Kraj").head(1).reset_index(drop=True)
@@ -191,7 +177,7 @@ else:
             "Cena za m2": "{:.0f}"
         })
         #tabulka - cena za m2
-        st.write("Cena bytů za m2 pro jednotlivé okresy")
+        st.write(f"Průměrné ceny bytů a užitné plochy pro jednotlivé okresy ({vybrany_kraj})")
         st.dataframe(styled_df, height=(num_rows+1)*35+3, hide_index=True)
         #barchart plotly - cena za m2
         sorted_df = df_groupby_okresy_cena_za_m2.sort_values(by="Cena za m2")
@@ -200,18 +186,18 @@ else:
         fig = px.bar(sorted_df, y="Okres", x="Cena za m2", color="barva",
                     color_discrete_map={"lightblue": "lightblue", "blue": "blue"},
                     category_orders={"Okres": sorted_df["Okres"].tolist()},
-                    title="Cena za m2 podle okresu")
+                    title=(f"Cena bytů za m2 podle okresu ({vybrany_kraj})"))
         fig.update_layout(showlegend=False)
         st.plotly_chart(fig)
         
 
         #DISPOZICE - ANALÝZA KRAJE
-        st.subheader(f"Analýza v rámci - dispozice: {vybrany_kraj}")
+        st.subheader(f"Analýza v rámci - dispozice ({vybrany_kraj})")
         col1, col2 = st.columns(2)
         with col1:
             df_kraj_groupby_dispozice_cena_m2 = df_kraj.groupby("Dispozice_kategorie")["Cena za m2"].mean().reset_index().sort_values(by="Cena za m2")
             #výpis df - dispozice
-            st.write("Dispozice bytů - cena za m2")
+            st.write(f"Dispozice bytů - cena za m2 ({vybrany_kraj})")
             num_rows = df_kraj_groupby_dispozice_cena_m2.shape[0]
 
             styled_df = df_kraj_groupby_dispozice_cena_m2.style.format({
@@ -228,7 +214,7 @@ else:
             
             fig = px.bar(sorted_df, y="Dispozice_kategorie", x="Cena za m2",
                         category_orders={"Dispozice_kategorie": sorted_df["Dispozice_kategorie"].tolist()},
-                        title="Cena za m2 dle dispozice bytu")
+                        title=(f"Cena za m2 dle dispozice bytu ({vybrany_kraj})"))
             fig.update_layout(showlegend=False, height=300, width=300, bargap=0.1)
 
             st.plotly_chart(fig)
@@ -238,18 +224,17 @@ else:
 
         with col1:
             #dispozice - četnost
-            st.write("Dispozice bytů - četnost")
             df_kraj_groupby_dispozice = df_kraj.groupby("Dispozice_kategorie")["Dispozice_kategorie"].count().reset_index(name="četnost")
             # Výpočet procentuálního zastoupení výskytů
             df_kraj_groupby_dispozice["procenta"] = (df_kraj_groupby_dispozice["četnost"]/df_kraj_groupby_dispozice["četnost"].sum()).round(2)
             df_kraj_groupby_dispozice["procenta"] = df_kraj_groupby_dispozice["procenta"].map(lambda x: f"{x:.0%}")
             # Vytvoření pie chartu - dispozice četnost
-            fig = px.pie(df_kraj_groupby_dispozice, values="četnost", names="Dispozice_kategorie", title="Dispozice bytů - zastoupení")
+            fig = px.pie(df_kraj_groupby_dispozice, values="četnost", names="Dispozice_kategorie", title=(f"Dispozice bytů - zastoupení ({vybrany_kraj})"))
             fig.update_traces(textinfo="percent+label")  # Přidání procentuálních hodnot k jednotlivým segmentům
             st.plotly_chart(fig, use_container_width=True)
             
         with col2:
-            st.write("Nejčetnější dispozice bytů dle krajů")
+            st.write(f"Nejčetnější dispozice bytů dle krajů ({vybrany_kraj})")
             df_groupby_okresy_dispozice = df_kraj.groupby(["Okres", "Dispozice_kategorie"]).size().reset_index(name="Počet")
             sorted_df_groupby_okresy_dispozice = df_groupby_okresy_dispozice.sort_values(by=["Okres", "Počet"], ascending=[True, False])
             result_df = sorted_df_groupby_okresy_dispozice.groupby("Okres").head(1).reset_index(drop=True)
