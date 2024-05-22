@@ -35,6 +35,7 @@ def show_content():
 if st.session_state["zobrazit_uvodni_obrazovku"]:
     st.subheader("Projekt Python Como")
     st.title("Analýza bytů k prodeji - Bezrealitky.cz")
+    st.title("Autor: Tereza Beránková")
     if st.button("Procházet analýzu", key="btn_prochazet_analyzu"):
         st.session_state["zobrazit_uvodni_obrazovku"] = False
         st.experimental_rerun()  # Okamžitě obnoví skript pro zobrazení dalšího obsahu
@@ -81,7 +82,7 @@ else:
 
     st.title("Analýza bytů k prodeji - Bezrealitky.cz")
 
-    st.write(vybrany_kraj, vybrany_okres)
+    st.write(f"vybráno: {vybrany_kraj}, {vybrany_okres}")
     #ZALOZKY
     tab1, tab2 =st.tabs(["Analýza v rámci ČR", "Analýza pro vybraný kraj"])
     #ZALOZKA1 - ANALYZA V RAMCI CR
