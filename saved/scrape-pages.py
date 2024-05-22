@@ -109,31 +109,7 @@ def scrape_property_data(url):
         paragraphs = text_div.find_all('p', class_='text-perex-lg') + text_div.find_all('p', class_='text-perex text-grey-dark')
         description = '\n'.join(paragraph.text.strip() for paragraph in paragraphs if paragraph.text.strip())
         property_data['Popis'] = description
-    
-    # Inicializovat vlastnosti balkon, výtah a garáž jako "ne"
-    property_data['balkon'] = "ne"
-    property_data['výtah'] = "ne"
-    property_data['garáž'] = "ne"
 
-    # Scrapování html1
-    html1_div = soup.find('div', class_='html1_class_name')  # Nahraďte 'html1_class_name' skutečnou třídou nebo id
-    if html1_div:
-        if 'balkon' in html1_div.text.lower():
-            property_data['balkon'] = "ano"
-        if 'výtah' in html1_div.text.lower():
-            property_data['výtah'] = "ano"
-        if 'garáž' in html1_div.text.lower():
-            property_data['garáž'] = "ano"
-    
-    # Scrapování html2
-    html2_div = soup.find('div', class_='html2_class_name')  # Nahraďte 'html2_class_name' skutečnou třídou nebo id
-    if html2_div:
-        if 'balkon' in html2_div.text.lower():
-            property_data['balkon'] = "ano"
-        if 'výtah' in html2_div.text.lower():
-            property_data['výtah'] = "ano"
-        if 'garáž' in html2_div.text.lower():
-            property_data['garáž'] = "ano"
     
     return property_data
 
@@ -154,3 +130,4 @@ with open('properties.json', 'w', encoding='utf-8') as json_file:
     json.dump(property_list, json_file, ensure_ascii=False, indent=4)
 
 print("Data uložena do properties.json")
+
