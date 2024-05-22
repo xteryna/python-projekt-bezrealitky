@@ -89,7 +89,7 @@ else:
     #ZALOZKA1 - ANALYZA V RAMCI CR
     with tab1:
         st.subheader("Analýza v rámci ČR - ceny bytů")
-        #CENA ZA M2 - ANALÝZA
+        #CENA ZA M2 - ANALÝZA ČR
         df_groupby_kraje_cena_za_m2 = df.groupby("Kraj")[["Užitná plocha", "Cena", "Cena za m2"]].mean().round({"Užitná plocha":0, "Cena": -5,"Cena za m2": -2}).reset_index().sort_values(by= "Cena za m2")
         num_rows = df_groupby_kraje_cena_za_m2.shape[0]
         styled_df = df_groupby_kraje_cena_za_m2.style.apply(zvyrazni_radek, axis=1, kategorie="Kraj", vybrana_hodnota=vybrany_kraj)
@@ -157,7 +157,7 @@ else:
         st.subheader("Analýza v rámci jednotlivých krajů - ceny bytů")
         df_kraj = df[df["Kraj"]==vybrany_kraj]
 
-        #cena za m2
+        #CENA ZA M2 - ANALÝZA KRAJE
         df_groupby_okresy_cena_za_m2 = df_kraj.groupby("Okres")[["Užitná plocha", "Cena", "Cena za m2"]].mean().round({"Užitná plocha":0, "Cena": -5,"Cena za m2": -2}).reset_index().sort_values(by= "Cena za m2")
         num_rows = df_groupby_okresy_cena_za_m2.shape[0]
         styled_df = df_groupby_okresy_cena_za_m2.style.apply(zvyrazni_radek, axis=1, kategorie="Okres", vybrana_hodnota=vybrany_okres)
@@ -176,6 +176,50 @@ else:
         st.plotly_chart(fig)
         
 
+        #DISPOZICE - ANALÝZA KRAJE
+        st.subheader(f"Analýza v rámci - dispozice: {vybrany_kraj}")
+        col1, col2 = st.columns(2)
+        with col1:
+            df_kraj_groupby_dispozice_cena_m2 = df.groupby("Dispozice_kategorie")["Cena za m2"].mean().reset_index().sort_values(by="Cena za m2")
+            #výpis df - dispozice
+            st.write("Dispozice bytů - cena za m2")
+            num_rows = df_kraj_groupby_dispozice_cena_m2.shape[0]
+            st.dataframe(df_kraj_groupby_dispozice_cena_m2, height=(num_rows+1)*35+3)    
+
+        with col2:
+            #barchart plotly - dispozice, cena za m2
+            sorted_df = df_kraj_groupby_dispozice_cena_m2.sort_values(by="Cena za m2", ascending=False)
+            
+            fig = px.bar(sorted_df, y="Dispozice_kategorie", x="Cena za m2",
+                        category_orders={"Dispozice_kategorie": sorted_df["Dispozice_kategorie"].tolist()},
+                        title="Cena za m2 dle dispozice bytu")
+            fig.update_layout(showlegend=False, height=300, width=300, bargap=0.1)
+
+            st.plotly_chart(fig)
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            #dispozice - četnost
+            st.write("Dispozice bytů - četnost")
+            df_kraj_groupby_dispozice = df.groupby("Dispozice_kategorie")["Dispozice_kategorie"].count().reset_index(name="četnost")
+            # Výpočet procentuálního zastoupení výskytů
+            df_kraj_groupby_dispozice["procenta"] = (df_kraj_groupby_dispozice["četnost"]/df_kraj_groupby_dispozice["četnost"].sum()).round(2)
+            df_kraj_groupby_dispozice["procenta"] = df_kraj_groupby_dispozice["procenta"].map(lambda x: f"{x:.0%}")
+            # Vytvoření pie chartu - dispozice četnost
+            fig = px.pie(df_kraj_groupby_dispozice, values="četnost", names="Dispozice_kategorie", title="Dispozice bytů - zastoupení")
+            fig.update_traces(textinfo="percent+label")  # Přidání procentuálních hodnot k jednotlivým segmentům
+            st.plotly_chart(fig, use_container_width=True)
+            
+        with col2:
+            st.write("Nejčetnější dispozice bytů dle krajů")
+            df_groupby_kraje_dispozice = df.groupby(["Kraj", "Dispozice_kategorie"]).size().reset_index(name="Počet")
+            sorted_df_groupby_kraje_dispozice = df_groupby_kraje_dispozice.sort_values(by=["Kraj", "Počet"], ascending=[True, False])
+            result_df = sorted_df_groupby_kraje_dispozice.groupby("Kraj").head(1).reset_index(drop=True)
+            styled_df = result_df.style.apply(zvyrazni_radek, axis=1, kategorie="Kraj", vybrana_hodnota=vybrany_kraj)
+            num_rows = result_df.shape[0]
+            #výpis df - dispozice, četnost
+            st.dataframe(styled_df, hide_index=True, height=(num_rows+1)*35+3)
 
 
 
