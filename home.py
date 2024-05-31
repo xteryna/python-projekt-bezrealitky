@@ -67,21 +67,22 @@ else:
     vybrany_okres = st.session_state.vybrany_okres
 
 
-    # funkce pro podmíněné formátování
-    def zvyrazni_radek(radek, kategorie, vybrana_hodnota):
-        if radek[kategorie] == vybrana_hodnota:
-            return ["background-color: blue"] * len(radek)
-        else:
-            return [""] * len(radek)
+    # Funkce pro podmíněné formátování
+    def zvyrazni_radek(df, kategorie, vybrana_hodnota):
+        styled_df = df.style.apply(
+            lambda row: ['background-color: blue' if row[kategorie] == vybrana_hodnota else '' for _ in row],
+            axis=1
+        )
+        
+        return styled_df
 
+    #funkce pro výpočet výšky tabulky, aby byla viditelná bez scrolování
     def vypocti_vysku(df):
         num_rows = df.shape[0]
         table_height = (num_rows+1)*35+3
-        return vypocti_vysku
-
+        return table_height
 
     st.title("Analýza bytů k prodeji - Bezrealitky.cz")
-
     st.write(f"vybráno: {vybrany_kraj}, {vybrany_okres}")
     #ZALOZKY
     tab1, tab2 =st.tabs(["Analýza v rámci ČR", "Analýza pro vybraný kraj"])
@@ -90,17 +91,17 @@ else:
         st.subheader("Analýza v rámci ČR - ceny bytů")
         #CENA ZA M2 - ANALÝZA ČR
         df_groupby_kraje_cena_za_m2 = df.groupby("Kraj")[["Užitná plocha", "Cena", "Cena za m2"]].mean().round({"Užitná plocha":0, "Cena": -5,"Cena za m2": -2}).reset_index().sort_values(by= "Cena za m2")
-        num_rows = df_groupby_kraje_cena_za_m2.shape[0]
-        # # Styling s podmíněným formátováním a formátováním hodnot
-        styled_df = df_groupby_kraje_cena_za_m2.style.apply(zvyrazni_radek, axis=1, kategorie="Kraj", vybrana_hodnota=vybrany_kraj).format({
+
+        styled_df = zvyrazni_radek(df_groupby_kraje_cena_za_m2, "Kraj", vybrany_kraj
+        ).format({
             "Užitná plocha": "{:.0f}",
             "Cena": "{:.0f}",
             "Cena za m2": "{:.0f}"
-        })
-     
+        }) 
+        
         #výpis df - cena za m2
         st.write("Průměrné ceny bytů a užitné plochy pro jednotlivé kraje")
-        st.dataframe(styled_df, height=(num_rows+1)*35+3, hide_index=True)
+        st.dataframe(styled_df, height=vypocti_vysku(df_groupby_kraje_cena_za_m2), hide_index=True)
 
         #barchart plotly - cena za m2
         sorted_df = df_groupby_kraje_cena_za_m2.sort_values(by="Cena za m2")
@@ -112,7 +113,7 @@ else:
                     title="Cena bytů za m2 podle kraje")
         fig.update_layout(showlegend=False)
         st.plotly_chart(fig)
-
+        #-------------------------------------------------------------------#
         #DISPOZICE ANALÝZA
         st.subheader("Analýza v rámci ČR - dispozice")
         col1, col2 = st.columns(2)
@@ -120,13 +121,12 @@ else:
             df_groupby_dispozice_cena_m2 = df.groupby("Dispozice_kategorie")["Cena za m2"].mean().reset_index().sort_values(by="Cena za m2")
             #výpis df - dispozice
             st.write("Dispozice bytů - cena za m2 (celá ČR)")
-            num_rows = df_groupby_dispozice_cena_m2.shape[0]
             styled_df = df_groupby_dispozice_cena_m2.style.format({
                 "Užitná plocha": "{:.0f}",
                 "Cena": "{:.0f}",
                 "Cena za m2": "{:.0f}"
             })
-            st.dataframe(styled_df, height=(num_rows+1)*35+3)    
+            st.dataframe(styled_df, height=vypocti_vysku(df_groupby_dispozice_cena_m2))    
 
         with col2:
             #barchart plotly - dispozice, cena za m2
@@ -158,10 +158,9 @@ else:
             sorted_df_groupby_kraje_dispozice = df_groupby_kraje_dispozice.sort_values(by=["Kraj", "Počet"], ascending=[True, False])
             result_df = sorted_df_groupby_kraje_dispozice.groupby("Kraj").head(1).reset_index(drop=True)
             result_df = result_df[["Kraj", "Dispozice_kategorie"]]
-            styled_df = result_df.style.apply(zvyrazni_radek, axis=1, kategorie="Kraj", vybrana_hodnota=vybrany_kraj)
-            num_rows = result_df.shape[0]
+            styled_df = zvyrazni_radek(result_df, "Kraj", vybrany_kraj)
             #výpis df - dispozice, četnost
-            st.dataframe(styled_df, hide_index=True, height=(num_rows+1)*35+3)
+            st.dataframe(styled_df, hide_index=True, height=vypocti_vysku(result_df))
 
     #ZALOZKA2 - ANALYZA PRO VYBRANY KRAJ
     with tab2:
@@ -170,16 +169,18 @@ else:
 
         #CENA ZA M2 - ANALÝZA KRAJE
         df_groupby_okresy_cena_za_m2 = df_kraj.groupby("Okres")[["Užitná plocha", "Cena", "Cena za m2"]].mean().round({"Užitná plocha":0, "Cena": -5,"Cena za m2": -2}).reset_index().sort_values(by= "Cena za m2")
-        num_rows = df_groupby_okresy_cena_za_m2.shape[0]
         # # Styling s podmíněným formátováním a formátováním hodnot
-        styled_df = df_groupby_okresy_cena_za_m2.style.apply(zvyrazni_radek, axis=1, kategorie="Okres", vybrana_hodnota=vybrany_okres).format({
+
+        styled_df = zvyrazni_radek(df_groupby_okresy_cena_za_m2, "Okres", vybrany_okres
+        ).format({
             "Užitná plocha": "{:.0f}",
             "Cena": "{:.0f}",
             "Cena za m2": "{:.0f}"
         })
+
         #tabulka - cena za m2
         st.write(f"Průměrné ceny bytů a užitné plochy pro jednotlivé okresy ({vybrany_kraj})")
-        st.dataframe(styled_df, height=(num_rows+1)*35+3, hide_index=True)
+        st.dataframe(styled_df, height=vypocti_vysku(df_groupby_okresy_cena_za_m2), hide_index=True)
         #barchart plotly - cena za m2
         sorted_df = df_groupby_okresy_cena_za_m2.sort_values(by="Cena za m2")
         sorted_df["barva"] = sorted_df["Okres"].apply(lambda x: "lightblue" if x == vybrany_okres else "blue")
@@ -199,15 +200,12 @@ else:
             df_kraj_groupby_dispozice_cena_m2 = df_kraj.groupby("Dispozice_kategorie")["Cena za m2"].mean().reset_index().sort_values(by="Cena za m2")
             #výpis df - dispozice
             st.write(f"Dispozice bytů - cena za m2 ({vybrany_kraj})")
-            num_rows = df_kraj_groupby_dispozice_cena_m2.shape[0]
-
             styled_df = df_kraj_groupby_dispozice_cena_m2.style.format({
                 "Užitná plocha": "{:.0f}",
                 "Cena": "{:.0f}",
                 "Cena za m2": "{:.0f}"
             })
-
-            st.dataframe(styled_df, height=(num_rows+1)*35+3)    
+            st.dataframe(styled_df, height=vypocti_vysku(df_kraj_groupby_dispozice_cena_m2))    
 
         with col2:
             #barchart plotly - dispozice, cena za m2
@@ -240,10 +238,9 @@ else:
             sorted_df_groupby_okresy_dispozice = df_groupby_okresy_dispozice.sort_values(by=["Okres", "Počet"], ascending=[True, False])
             result_df = sorted_df_groupby_okresy_dispozice.groupby("Okres").head(1).reset_index(drop=True)
             result_df = result_df[["Okres", "Dispozice_kategorie"]]
-            styled_df = result_df.style.apply(zvyrazni_radek, axis=1, kategorie="Okres", vybrana_hodnota=vybrany_kraj)
-            num_rows = result_df.shape[0]
+            styled_df = zvyrazni_radek(result_df, "Okres", vybrany_okres)
             #výpis df - dispozice, četnost
-            st.dataframe(styled_df, hide_index=True, height=(num_rows+1)*35+3)
+            st.dataframe(styled_df, hide_index=True, height=vypocti_vysku(result_df))
 
 
 
