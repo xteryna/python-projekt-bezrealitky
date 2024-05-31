@@ -3,18 +3,13 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 
-#načíst soubor s daty z bezrealitky.cz
 with open("properties.json", "r", encoding="utf-8") as file:
     data = json.load(file)
 
-#pandas - vytvoření dataframe z dat v json
 df = pd.DataFrame(data)
-#odstranit z df nepotřebné sloupce
 df = df.drop(["Městská část", "Stav", "Číslo inzerátu", "Vlastnictví", "Rizika", "Vybaveno", "Podlaží", "URL", "Popis", "Dostupné od", "PENB", "Pošta (metry)", "Pošta (minuty)", "Banka (metry)", "Banka (minuty)", "Restaurace (metry)", "Restaurace (minuty)", "Lékárna (metry)", "Lékárna (minuty)", "Sportoviště (metry)", "Sportoviště (minuty)", "Provedení", "Stáří", "Vytápění", "Rekonstrukce", "Plocha pozemku", "Typ pozemku", "Odpad", "Voda"], axis=1)
-#výpočet nového sloupce - cena za m2
 df["Cena za m2"] = df["Cena"] / df["Užitná plocha"]
 
-#funkce pro sloučení hodnot  dispozic bytů
 def map_dispozice(dispozice):
     if ("1+" in dispozice) or ("Garsoniéra" in dispozice):
         return "1+1/1+kk"
@@ -26,54 +21,48 @@ def map_dispozice(dispozice):
         return "4+1/4+kk"
     else:
         return 'Ostatní'
-#nový sloupec s přemapovanými dispozicemi
+
 df["Dispozice_kategorie"] = df["Dispozice"].apply(map_dispozice)
 
-#inicializace session state pro úvodní obrazovku
 if "zobrazit_uvodni_obrazovku" not in st.session_state:
     st.session_state["zobrazit_uvodni_obrazovku"] = True
 
-#na začátku se zobrazí úvodní obrazovka (true), pak je deaktivována stisknutím tlačítka
+
+def show_content():
+    st.session_state["zobrazit_uvodni_obrazovku"] = False
+    st.experimental_rerun()  # Okamžitě obnoví skript pro zobrazení dalšího obsahu
+
 if st.session_state["zobrazit_uvodni_obrazovku"]:
     st.subheader("Projekt Python Como")
     st.title("Analýza bytů k prodeji - Bezrealitky.cz")
     st.title("Autor: Tereza Beránková")
     if st.button("Procházet analýzu", key="btn_prochazet_analyzu"):
-        st.session_state["zobrazit_uvodni_obrazovku"] = False #deaktivace úvodní obrazovky
+        st.session_state["zobrazit_uvodni_obrazovku"] = False
         st.experimental_rerun()  # Okamžitě obnoví skript pro zobrazení dalšího obsahu
 else:
-    # Inicializace session state pro vybraný kraj 
+    # Inicializace session state pro vybraný kraj a okres
     if "vybrany_kraj" not in st.session_state:
-        if "Ústecký kraj" in df["Kraj"].tolist():
-            st.session_state.vybrany_kraj = "Ústecký kraj" 
-        else:
-            st.session_state.vybrany_kraj = df["Kraj"].iloc[0] #- první řádek v df
+        st.session_state.vybrany_kraj = df["Kraj"].iloc[0]
 
-    # Funkce pro nastavení vybraného okresu
-    def set_okres():
-        okresy_v_kraji = df[df["Kraj"] == st.session_state.vybrany_kraj]["Okres"].unique().tolist()
-        if (st.session_state.vybrany_kraj == "Ústecký kraj") and ("okres Most" in okresy_v_kraji):
-            st.session_state.vybrany_okres = "okres Most"
-        else:
-            st.session_state.vybrany_okres = df[df["Kraj"] == st.session_state.vybrany_kraj]["Okres"].iloc[0]
-        return okresy_v_kraji
-
-    # Inicializace session state pro vybraný okres - první řádek v df
     if "vybrany_okres" not in st.session_state:
-        set_okres()
+        st.session_state.vybrany_okres = df[df["Kraj"] == st.session_state.vybrany_kraj]["Okres"].iloc[0]
 
     # Seznam krajů pro selectbox
     kraje = df["Kraj"].unique().tolist()
 
+    # Funkce pro nastavení vybraného kraje
+    def set_kraj():
+        st.session_state.vybrany_kraj = st.session_state.kraj
+        st.session_state.vybrany_okres = df[df["Kraj"] == st.session_state.vybrany_kraj]["Okres"].iloc[0]
+
     # Selectbox pro výběr kraje
-    st.sidebar.selectbox("Vyber kraj:", kraje, key='vybrany_kraj', index=kraje.index(st.session_state.vybrany_kraj), on_change=set_okres)
+    st.sidebar.selectbox("Vyber kraj:", kraje, key='kraj', index=kraje.index(st.session_state.vybrany_kraj), on_change=set_kraj)
 
     # Filtrace okresů podle vybraného kraje
-    okresy_v_kraji = df[df["Kraj"] == st.session_state.vybrany_kraj]["Okres"].unique().tolist()
+    okresy = df[df["Kraj"] == st.session_state.vybrany_kraj]["Okres"].unique().tolist()
 
     # Selectbox pro výběr okresu
-    st.sidebar.selectbox("Vyber okres:", okresy_v_kraji, key='vybrany_okres', index=okresy_v_kraji.index(st.session_state.vybrany_okres))
-    #uložení session states do proměnných
+    st.session_state.vybrany_okres = st.sidebar.selectbox("Vyber okres:", okresy, key='okres', index=okresy.index(st.session_state.vybrany_okres))
     vybrany_kraj = st.session_state.vybrany_kraj
     vybrany_okres = st.session_state.vybrany_okres
 
@@ -84,12 +73,11 @@ else:
             return ["background-color: blue"] * len(radek)
         else:
             return [""] * len(radek)
-        
-    #funkce pro výpočet výšky tabulky, aby byla viditelná bez scrolování
+
     def vypocti_vysku(df):
         num_rows = df.shape[0]
         table_height = (num_rows+1)*35+3
-        return table_height
+        return vypocti_vysku
 
 
     st.title("Analýza bytů k prodeji - Bezrealitky.cz")
@@ -256,7 +244,6 @@ else:
             num_rows = result_df.shape[0]
             #výpis df - dispozice, četnost
             st.dataframe(styled_df, hide_index=True, height=(num_rows+1)*35+3)
-
 
 
 
