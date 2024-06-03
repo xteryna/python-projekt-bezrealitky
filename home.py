@@ -9,6 +9,8 @@ with open("properties.json", "r", encoding="utf-8") as file:
 
 #pandas - vytvoření dataframe z dat v json
 df = pd.DataFrame(data)
+#pro Prahu nahradit okres městkou částí
+df.loc[df["Okres"] == "Praha", "Okres"] = df["Městská část"]
 #odstranit z df nepotřebné sloupce
 df = df.drop(["Městská část", "Stav", "Číslo inzerátu", "Vlastnictví", "Rizika", "Vybaveno", "Podlaží", "URL", "Popis", "Dostupné od", "PENB", "Pošta (metry)", "Pošta (minuty)", "Banka (metry)", "Banka (minuty)", "Restaurace (metry)", "Restaurace (minuty)", "Lékárna (metry)", "Lékárna (minuty)", "Sportoviště (metry)", "Sportoviště (minuty)", "Provedení", "Stáří", "Vytápění", "Rekonstrukce", "Plocha pozemku", "Typ pozemku", "Odpad", "Voda"], axis=1)
 #výpočet nového sloupce - cena za m2
